@@ -13,3 +13,19 @@ Set up core developement tools, learn basic Git workflows, and create simple a N
 3. **MongoDB**: Database (local or cloud instance).
 4. **Git**: Version control system.
 5. **MongoDB Compass**: GUI for MongoDB (optional).
+
+## Lab Procedures:
+
+**Step 1: Install Development Tools**
+
+1. **Install VSCode** 
+- Download from [https://code.visualstudio.com/]
+- Install recommended extensions: **MongoDB for VSCode**
+
+2. **Install NodeJS & npm**
+- Download the LTS version from [https://nodejs.org/]
+- Verify installation:
+
+```sh
+node -v
+npm -v
