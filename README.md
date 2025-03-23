@@ -2,39 +2,24 @@
 
 ## WEEK 1 EXERCISE: Environment Setup, Git Workflows & Hello MongoDB
 
-## Objective: 
+## Project Description 
 Set up core developement tools, learn basic Git workflows, and create simple a NodeJS script that connect to MongoDB.
 
-## Exercise Overview:
-**Tools to Install**
 
-1. **VSCode**: Code Editor.
-2. **NodeJS & npm**: JavaScript runtime and package manager.
-3. **MongoDB**: Database (local or cloud instance).
-4. **Git**: Version control system.
-5. **MongoDB Compass**: GUI for MongoDB (optional).
-
-## Lab Procedures:
+## Installation Steps :
 
 **Step 1: Install Development Tools**
 
 1. **Install VSCode** 
 - Download from https://code.visualstudio.com/
-- Install recommended extensions: **MongoDB for VSCode**
-
-2. **Install NodeJS & npm**
 - Download the LTS version from https://nodejs.org/
-- Verify installation:
-
+- Follow the  https://www.mongodb.com/docs/manual/administration/install-community/
+- Start MongoDB Service :
 ```sh
-node -v
-npm -v
+mongod --dbpath /path/to/data/directory
 ```
-3. **Install MongoDB**
-- Follow https://www.mongodb.com/docs/manual/administration/install-community/
-- Start MongoDB service
 
-4. **Install Git**
+2. **Install Git**
 - Download from https://git-scm.com/
 - Configure Git username/email:
 
@@ -42,94 +27,85 @@ npm -v
 git config --global user.name "Your Name"
 git config --global user.email "your@email.com"
 ```
-
-5. **Install MongoDB Compass (Optional)**
+3. **Install MongoDB Compass (Optional)**
 - Download from https://www.mongodb.com/products/compass
 
-**Step 2: Git Basics & Repository Setup**
+**Step 2 : Project Setup**
 
 1. **Create a Github Account**
 - https://education.github.com/pack
 - Create a new Git Repository
 ![alt text](<Screenshot 2025-03-22 014125-1.jpg>)
 
-2. **Create a README.md File**
-- Documents your installation steps
+2. **Initialize a Node.js project**
+```sh
+npm iniy -y
+```
+3. **Install the MongoDB Driver :**
+```sh
+npm install mongodb
+```
+**Step 3 : Usage**
+1. **Run the script :**
+```sh
+node index.js
+```
 
-3. **Commit and Push to GitHub**
+2. **Expected console output :**
+```sh
+Connected to MongoDB !
+Document inserted
+Query result : { _id: objectId('...'), name: ('Your Name'), Age: ('Your Age')}
+```
+3. **Verify in MongoDB Compass :**
+- Connect to your MongoDB
+- Navigate to `testDB.user` collection to view the inserted document
+
+**Setup 4 : Git Workflow**
+
+1. **Initialize Git Repository :**
+
+```sh
+git init
+```
+2. **Create branches :**
+
+```sh
+git branch <branch-name>
+git checkout <branch-name>
+```
+
+3. **Commit and Push Changes :**
 
 ```sh
 git add .
 git commit -m "Initial commit: Setup documentation"
-git branch -M main
-git remote add origin https://github.com/anishafifza/berr2243-25.git
 git push -u origin main
 ```
 
-**Step 3: Create a "Hello MongoDB" NodeJS Script**
+**Troubleshooting Issues**
 
-1. **Initialize a NodeJS Project**
+- **MongoDB connection issues :** Ensure MongoDB serving is running and Verify MongoDB is listening on the correct port `27027`
+
+- **Git Error** Check remote repositories
+
+- **Node.js Script Fails to Connect to MongoDB :** 
+1. Ensure you use `await client.connect()` when connecting to MongoDB
+2. Double-check the connection string in index.js : `const uri = "mongodb://localhost:27017";`
+
+- **MongoDB Data Not Appearing in Compass**
+
+1. Refresh MongoDB Compass
+2. Ensure the correct database and collection are selected
+3. Verify data insertion with MongoDB shell:
 ```sh
-npm init -y
-```
-2. **Install MongoDB Driver**
-```sh
-npm install mongodb
-```
-3. **Create index.js**
-```sh
-const { MongoClient, Collection } = require('mongodb');
-
-async function main() {
-    // Replace <connection-string> with your MongDB URI
-    const uri = "mongodb://localhost:27017/"
-    const client = new MongoClient(uri);
-
-    try {
-        await client.connect();
-        console.log("Connected to MongoDB!");
-
-        const db = client.db("testDB");
-        const collection = db.collection("users");
-
-
-        // Insert a document
-        await collection.insertOne({ name: "Anis", age: 23 });
-        console.log("Document inserted");
-
-        // Query the document
-        const result = await collection.findOne({ name: "Anis"});
-        console.log("Query result:", result);
-    } catch (err) {
-        console.error("Error:", err);
-    } finally {
-        await client.close();
-    }
-}
-
-main();
-```
-4. **Run the Script**
-```sh
-node index.js
-```
-5. **Verify in MongoDB Compass**
-- Connect to you MongoDB instance and check the testDB database
-
-**Step4: Push Code to GitHub**
-
-1. Create a file **.gitignore**
-2. Add the node_modules into the .gitignore file
-```sh
-# dependencies
-/node_modules
+use testDB  
+db.users.find().pretty()
 ```
 
-3. **Commit Changes**
-```sh
-git add .
-git commit -m "Add NodeJS script and MongoDB connection"
-```
-4. **Push to GitHub**
-
+**Project Structure**
+1. index.js
+2. package.json
+3. .gitignore
+4. README.md
 
