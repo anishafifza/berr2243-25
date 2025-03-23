@@ -35,6 +35,7 @@ git config --global user.email "your@email.com"
 1. **Create a Github Account**
 - https://education.github.com/pack
 - Create a new Git Repository
+
 ![alt text](<Screenshot 2025-03-22 014125-1.jpg>)
 
 2. **Initialize a Node.js project**
@@ -85,13 +86,14 @@ git push -u origin main
 
 **Troubleshooting Issues**
 
-- **MongoDB connection issues :** Ensure MongoDB serving is running and Verify MongoDB is listening on the correct port `27027`
+- **MongoDB connection issues :** Ensure MongoDB serving is running and Verify MongoDB is listening on the correct port `27017`
 
 - **Git Error** Check remote repositories
 
 - **Node.js Script Fails to Connect to MongoDB :** 
 1. Ensure you use `await client.connect()` when connecting to MongoDB
-2. Double-check the connection string in index.js : `const uri = "mongodb://localhost:27017";`
+2. Double-check the connection string in index.js : 
+`const uri = "mongodb://localhost:27017";`
 
 - **MongoDB Data Not Appearing in Compass**
 
