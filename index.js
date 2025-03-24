@@ -6,7 +6,7 @@ async function main() {
     const client = new MongoClient(uri);
 
     try {
-        //
+        await client.connect();
         console.log("Connected to MongoDB!");
 
         const db = client.db("testDB");
@@ -14,11 +14,11 @@ async function main() {
 
 
         // Insert a document
-        await collection.insertOne({ name: "Anis Hafifza", age: 2002 });
+        await collection.insertOne({ name: "Anis", age: 23 });
         console.log("Document inserted");
 
         // Query the document
-        const result = await collection.findOne({ name: "Anis Hafifza"});
+        const result = await collection.findOne({ name: "Anis"});
         console.log("Query result:", result);
     } catch (err) {
         console.error("Error:", err);
