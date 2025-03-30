@@ -5,7 +5,7 @@
 const { MongoClient, Collection } = require('mongodb');
 
 async function main() {
-    // Replace <connection-string> with your MongDB URI
+    // Replace <connection-string> with your MongoDB URI
     const uri = "mongodb://localhost:27017/"
     const client = new MongoClient(uri);
 
