@@ -1,5 +1,6 @@
 const { MongoClient} = require('mongodb');
 
+//  Define Drivers as a JavaScript Variable - Task 1
 const drivers = [
     {
         name: "John Doe",
@@ -15,18 +16,18 @@ const drivers = [
     }
 ];
 
-// show the data in the console
+// show the data in the console - Task 2
 console.log(drivers);
 
-// TODO: show the all the drivers name in the console
+// TODO: show the all the drivers name in the console - Task 2
 drivers.forEach(driver => {console.log(driver.name);});
 
-// TODO: add additional driver to the drivers array
+// TODO: add additional driver to the drivers array - Task 2
 drivers.push({
-    name: "David",
+    name: "Alex",
     vehicleType: "Truck",
-    isAvailable: true,
-    rating: 4.6
+    isAvailable: false,
+    rating: 4.7
 });
 
 async function main() 
@@ -38,14 +39,15 @@ async function main()
         await client.connect();
         const db = client.db("testDB");
        
-        const driversCollection = db.collection("drivers"); // Insert Drivers into MongoDB
+        const driversCollection = db.collection("drivers");
 
+        // Insert Drivers into MongoDB Task 3
         // for (const driver of drivers) {
         //     const result = await driversCollection.insertOne(driver);
         //     console.log(`New driver created with result: ${result.insertedId}`);
         // }
         
-        // Query and Update Drivers
+        // Query and Update Drivers - Task 4
         // const availableDrivers = await db.collection('drivers').find(
         //     {
         //         isAvailable: true,
@@ -53,18 +55,20 @@ async function main()
         //     }).toArray();
         //     console.log("Available drivers:", availableDrivers);
 
-        // Update
-        // const updateResult = await db.collection('drivers').updateOne(
-        //     { name: "John Doe" },
+        // Update - Task 5
+        // const updateResult = await db.collection('drivers').updateMany(
+        //     { isAvailable: true },
         //     { $inc: { rating: 0.1 } }
         // );
         // console.log(`Drivers updated with result: ${updateResult}`);
 
-        // Delete - Task 6
-        const deleteResult = await db.collection('drivers').deleteOne({ isAvailable: false });
-        console.log(`Driver delete with result: ${deleteResult}`);
+        // // Delete - Task 6
+        // const deleteResult = await db.collection('drivers').deleteMany({ isAvailable: false });
+        // console.log(`Driver delete with result: ${deleteResult}`);
+
         }
-    finally 
+    
+        finally 
     {
         await client.close();
     }
