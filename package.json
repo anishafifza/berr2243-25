@@ -18,6 +18,7 @@
   },
   "homepage": "https://github.com/anishafifza/berr2243-25#readme",
   "dependencies": {
+    "express": "^5.1.0",
     "mongod": "^2.0.0",
     "mongodb": "^6.15.0"
   }
