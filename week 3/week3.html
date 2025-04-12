@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Ride Dashboard</title>
+  <style>
+    table, th, td {
+      border: 1px solid black;
+      border-collapse: collapse;
+      padding: 8px;
+    }
+    form {
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Ride Dashboard</h1>
+
+  <button onclick="fetchRides()">Refresh Rides</button>
+  <table id="ridesTable">
+    <thead>
+      <tr>
+        <th>ID</th>
+        <th>Pickup</th>
+        <th>Destination</th>
+        <th>Driver ID</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <h2>Create New Ride</h2>
+  <form id="rideForm">
+    <input type="text" id="pickup" placeholder="Pickup Location" required>
+    <input type="text" id="destination" placeholder="Destination" required>
+    <input type="text" id="driverId" placeholder="Driver ID" required>
+    <button type="submit">Add Ride</button>
+  </form>
+
+  <script>
+    const API_URL = 'http://localhost:3000/rides';
+
+    async function fetchRides() {
+      const res = await fetch(API_URL);
+      const rides = await res.json();
+      const tableBody = document.querySelector('#ridesTable tbody');
+      tableBody.innerHTML = '';
+      rides.forEach(ride => {
+        tableBody.innerHTML += `
+          <tr>
+            <td>${ride._id}</td>
+            <td>${ride.pickupLocation}</td>
+            <td>${ride.destination}</td>
+            <td>${ride.driverId}</td>
+            <td>${ride.status}</td>
+          </tr>`;
+      });
+    }
+
+    document.getElementById('rideForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const pickup = document.getElementById('pickup').value;
+      const destination = document.getElementById('destination').value;
+      const driverId = document.getElementById('driverId').value;
+
+      await fetch(API_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pickupLocation: pickup,
+          destination: destination,
+          driverId: driverId,
+          status: 'requested'
+        })
+      });
+
+      fetchRides();
+    });
+
+    // Auto-load on page open
+    fetchRides();
+  </script>
+</body>
+</html>

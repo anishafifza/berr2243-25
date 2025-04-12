@@ -32,25 +32,25 @@ app.listen(port, () => {
 
 // GET /rides = Fetch all rides
 
-app.get('/rides', async (req, res) => {  // send a GET req to /rides, this fx is triggered
+app.get('/users', async (req, res) => {  // send a GET req to /rides, this fx is triggered
     try {
-        const rides = await db.collection('rides').find().toArray(); // Find all doc in rides collecton & convert the result into an array
+        const rides = await db.collection('users').find().toArray(); // Find all doc in rides collecton & convert the result into an array
         res.status(200).json(rides); // sends the ride back to client as JSON with status 200 OK
     
     } catch (err) {
-        res.status(500).json({ error: "Failed to fetch rides" }); // If error happens ( like db issues), it sends a 500 internal server error
+        res.status(500).json({ error: "Failed to fetch user" }); // If error happens ( like db issues), it sends a 500 internal server error
     }
 });
 
 // POST /rides - Create a new ride
 
-app.post('/rides', async (req, res) => { // Handles POST req to create a new ride
+app.post('/users', async (req, res) => { // Handles POST req to create a new ride
     try {
-        const result = await db.collection('rides').insertOne(req.body); // Inserts data from the (req.body) into the ride collection
+        const result = await db.collection('users').insertOne(req.body); // Inserts data from the (req.body) into the ride collection
         res.status(201).json({ id: result.insertedId }) // send back ID of the newly created ride
     
     } catch (err) { 
-        res.status(400).json({ error: "Invalid ride data" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+        res.status(400).json({ error: "Invalid user data" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
     }
 });
 
