@@ -44,10 +44,10 @@ app.get('/rides', async (req, res) => {  // send a GET req to /rides, this fx is
 
 // POST /rides - Create a new ride
 
-app.post('/rides', async (req, res) => { // Hnadles POST req to create a new ride
+app.post('/rides', async (req, res) => { // Handles POST req to create a new ride
     try {
         const result = await db.collection('rides').insertOne(req.body); // Inserts data from the (req.body) into the ride collection
-        res.status(200).json({ id: result.insertedId }) // send back ID of the newly created ride
+        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created ride
     
     } catch (err) { 
         res.status(400).json({ error: "Invalid ride data" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
@@ -55,44 +55,46 @@ app.post('/rides', async (req, res) => { // Hnadles POST req to create a new rid
 });
 
 // PATCH /rides/:id - Update ride status
+// PATCH/users/:id - Cancel a user status
 
-app.patch('/rides/:id', async (req, res) => { // Handles PATCH req to update a ride by its ID
+app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
     
     try {
-        const result = await db.collection('rides').updateOne(  // looks for a ride with the matching ID & updates the status field
+        const result = await db.collection('users').updateOne(  // looks for a ride with the matching ID & updates the status field
             {
                  _id: new ObjectId(req.params.id) },
                  { $set: { status: req.body.status }}
             );
 
             if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
-                return res.status(404).json({ error: "Ride not found"});
+                return res.status(404).json({ error: "User not found"});
             }
             res.status(200).json({ updated: result.modifiedCount }); // if successful it returns how many rides were updated (usually 1)
 
             } catch (err) { // Catches errors like an invalid ID format / bad req data
 
                 // Handle invalid ID format or DB errors
-                res.status(400).json({ error: "Invalid ride ID or data" });
+                res.status(400).json({ error: "Invalid user ID or data" });
             }     
 });
 
 // DELETE /rides/:id - Cancel a ride
+// DELETE /users/:id - Cancel a user
 
-app.delete('/rides/:id', async (req, res) => { // Handles DELETE req to remove a ride by ID
+app.delete('/users/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
     
     try {
-        const result = await db.collection('rides').deleteOne( // Deletes the ride with the matching ID from the db
+        const result = await db.collection('users').deleteOne( // Deletes the ride with the matching ID from the db
             { _id: new ObjectId(req.params.id) }
         );
 
         if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
-            return res.status(404).json({ error: "Ride not found"});
+            return res.status(404).json({ error: "User not found"});
         }
         res.status(200).json({ deleted: result.deletedCount}); // on succes, res with hoe many rides were deleted
 
-    } catch (err) { // catch & return 400 Bad req for invaid IDs / other errors
-        res.status(400).json({ error: "Invalid ride ID" });
+    } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
+        res.status(400).json({ error: "Invalid user ID" });
     }
 });
 
