@@ -2,85 +2,293 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Ride Dashboard</title>
+  <title>Ride Management Dashboard</title>
   <style>
-    table, th, td {
-      border: 1px solid black;
-      border-collapse: collapse;
-      padding: 8px;
+    body {
+      margin: 0;
+      padding: 0;
+      background-image: url('https://images.unsplash.com/photo-1503736334956-4c8f8e92946d');
+      background-size: cover;
+      background-position: center;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #fff;
+      backdrop-filter: brightness(0.5);
     }
-    form {
-      margin-top: 20px;
+
+    .container {
+      max-width: 900px;
+      margin: 50px auto;
+      background: rgba(0, 0, 0, 0.6);
+      padding: 30px;
+      border-radius: 20px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    }
+
+    h1 {
+      text-align: center;
+      margin-bottom: 40px;
+      font-size: 2.5em;
+      color: #f0e6ff;
+    }
+
+    .form-section {
+      margin-bottom: 40px;
+    }
+
+    .form-section h2 {
+      font-size: 1.4em;
+      margin-bottom: 15px;
+      color: #f9f9f9;
+    }
+
+    .form-group {
+      margin-bottom: 20px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      font-weight: 500;
+    }
+
+    input {
+      width: 100%;
+      padding: 10px;
+      border: none;
+      border-radius: 10px;
+      background: rgba(255, 255, 255, 0.2);
+      color: #fff;
+      font-size: 1em;
+    }
+
+    button {
+      padding: 10px 20px;
+      background: #ff6ec4;
+      border: none;
+      color: white;
+      border-radius: 10px;
+      cursor: pointer;
+      font-weight: bold;
+      margin-top: 10px;
+    }
+
+    button:hover {
+      background: #ffa9f9;
+    }
+
+    #refresh-btn {
+      float: right;
+      background: #6a82fb;
+      margin-bottom: 20px;
+    }
+
+    .ride-card {
+      background: rgba(255, 255, 255, 0.15);
+      padding: 20px;
+      border-radius: 15px;
+      margin-bottom: 20px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+
+    .ride-card p {
+      margin: 5px 0;
+    }
+
+    .status {
+      font-weight: bold;
+    }
+
+    .status.pending {
+      color: #fce38a;
+    }
+
+    .status.completed {
+      color: #95fcb5;
+    }
+
+    .status.cancelled {
+      color: #ff5e78;
+    }
+
+    .ride-buttons button {
+      background-color: transparent;
+      border: 1px solid white;
+      color: white;
+      margin-right: 10px;
+      padding: 5px 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .ride-buttons button:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .status-buttons {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-top: 10px;
+    }
+
+    .status-btn {
+      flex: 1;
+      padding: 12px;
+      background-color: rgba(255, 255, 255, 0.1);
+      color: white;
+      border: 2px solid transparent;
+      border-radius: 12px;
+      cursor: pointer;
+      transition: 0.3s ease;
+      font-weight: bold;
+      font-size: 1em;
+    }
+
+    .status-btn:hover {
+      background-color: rgba(255, 255, 255, 0.2);
+      border-color: #ffffff40;
+    }
+
+    .status-btn.active {
+      background-color: #ff6ec4;
+      color: white;
+      border-color: #ffa9f9;
     }
   </style>
 </head>
 <body>
-  <h1>Ride Dashboard</h1>
+  <div class="container">
+    <h1>🚗 RIDE MANAGEMENT DASHBOARD 🚗</h1>
 
-  <button onclick="fetchRides()">Refresh Rides</button>
-  <table id="ridesTable">
-    <thead>
-      <tr>
-        <th>ID</th>
-        <th>Pickup</th>
-        <th>Destination</th>
-        <th>Driver ID</th>
-        <th>Status</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+    <button id="refresh-btn" onclick="fetchRides()">Refresh</button>
 
-  <h2>Create New Ride</h2>
-  <form id="rideForm">
-    <input type="text" id="pickup" placeholder="Pickup Location" required>
-    <input type="text" id="destination" placeholder="Destination" required>
-    <input type="text" id="driverId" placeholder="Driver ID" required>
-    <button type="submit">Add Ride</button>
-  </form>
+    <div class="form-section">
+      <h2>Create New Ride</h2>
+      <div class="form-group">
+        <label>Pickup Location</label>
+        <input id="pickup" type="text">
+      </div>
+      <div class="form-group">
+        <label>Destination</label>
+        <input id="destination" type="text">
+      </div>
+      <div class="form-group">
+        <label>Driver ID</label>
+        <input id="driverId" type="text">
+      </div>
+      <button onclick="createRide()">Create Ride</button>
+    </div>
+
+    <div class="form-section">
+      <h2>Update Ride Status</h2>
+      <div class="form-group">
+        <label>Ride ID</label>
+        <input id="rideId" type="text">
+      </div>
+      <div class="form-group">
+        <label>Status</label>
+        <div class="status-buttons">
+          <button type="button" class="status-btn" data-status="pending">🚦 Pending</button>
+          <button type="button" class="status-btn" data-status="completed">✅ Completed</button>
+          <button type="button" class="status-btn" data-status="cancelled">❌ Cancelled</button>
+        </div>
+      </div>
+      <button onclick="updateStatus()">Update Status</button>
+    </div>
+
+    <h2>All Rides</h2>
+    <div id="rideList"></div>
+  </div>
 
   <script>
-    const API_URL = 'http://localhost:3000/rides';
+    let selectedStatus = '';
 
-    async function fetchRides() {
-      const res = await fetch(API_URL);
-      const rides = await res.json();
-      const tableBody = document.querySelector('#ridesTable tbody');
-      tableBody.innerHTML = '';
-      rides.forEach(ride => {
-        tableBody.innerHTML += `
-          <tr>
-            <td>${ride._id}</td>
-            <td>${ride.pickupLocation}</td>
-            <td>${ride.destination}</td>
-            <td>${ride.driverId}</td>
-            <td>${ride.status}</td>
-          </tr>`;
-      });
-    }
-
-    document.getElementById('rideForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const pickup = document.getElementById('pickup').value;
-      const destination = document.getElementById('destination').value;
-      const driverId = document.getElementById('driverId').value;
-
-      await fetch(API_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pickupLocation: pickup,
-          destination: destination,
-          driverId: driverId,
-          status: 'requested'
-        })
+    document.addEventListener('DOMContentLoaded', () => {
+      document.querySelectorAll('.status-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          document.querySelectorAll('.status-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+          selectedStatus = btn.getAttribute('data-status');
+        });
       });
 
       fetchRides();
     });
 
-    // Auto-load on page open
-    fetchRides();
+    async function fetchRides() {
+      const res = await fetch('http://localhost:3000/rides');
+      const rides = await res.json();
+      const rideList = document.getElementById('rideList');
+      rideList.innerHTML = '';
+
+      rides.forEach(ride => {
+        const card = document.createElement('div');
+        card.className = 'ride-card';
+        card.innerHTML = `
+          <p><strong>ID:</strong> ${ride._id}</p>
+          <p><strong>Pickup:</strong> ${ride.pickup}</p>
+          <p><strong>Destination:</strong> ${ride.destination}</p>
+          <p><strong>Driver ID:</strong> ${ride.driverId}</p>
+          <p><strong>Status:</strong> <span class="status ${ride.status.toLowerCase()}">${ride.status}</span></p>
+          <div class="ride-buttons">
+            <button onclick="cancelRide('${ride._id}')">Cancel</button>
+            <button onclick="deleteRide('${ride._id}')">Delete</button>
+          </div>
+        `;
+        rideList.appendChild(card);
+      });
+    }
+
+    async function createRide() {
+      const pickup = document.getElementById('pickup').value;
+      const destination = document.getElementById('destination').value;
+      const driverId = document.getElementById('driverId').value;
+
+      await fetch('http://localhost:3000/rides', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pickup, destination, driverId, status: "pending" })
+      });
+
+      fetchRides();
+    }
+
+    async function updateStatus() {
+      const id = document.getElementById('rideId').value;
+
+      if (!selectedStatus) {
+        alert('Please select a status!');
+        return;
+      }
+
+      await fetch(`http://localhost:3000/rides/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: selectedStatus })
+      });
+
+      fetchRides();
+    }
+
+    async function cancelRide(id) {
+      await fetch(`http://localhost:3000/rides/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: "cancelled" })
+      });
+
+      fetchRides();
+    }
+
+    async function deleteRide(id) {
+      await fetch(`http://localhost:3000/rides/${id}`, {
+        method: 'DELETE'
+      });
+
+      fetchRides();
+    }
   </script>
 </body>
 </html>
