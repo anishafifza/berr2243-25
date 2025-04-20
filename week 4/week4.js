@@ -154,8 +154,13 @@ app.post('/users/login', async (req, res) => { // Handles POST req to customer l
 
     try {
         const user = await db.collection('users').findOne({email, password}); // find data from the (req.body) into the user collection
+        
         if (!user) {
             return res.status(401).json({ error: "Invalid email or password" }) //unauthorized
+        }
+        
+        if (user.status === "blocked"){
+            return res.status(403).json({ error: "Your account has been blocked" });
         }
     
         res.status(200).json({ //if successfull it returns 200 OK to login
