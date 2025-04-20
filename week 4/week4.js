@@ -2,7 +2,7 @@
 // function node is run to code "node index.js"
 
 const express = require ('express'); // Node.js framework to build API's web app
-const { MongoClient, ObjectId } = require('mongodb');
+const { MongoClient, ObjectId, MongoDBCollectionNamespace } = require('mongodb');
 const port = 3000; // create port and server
 
 const app = express();
@@ -22,6 +22,21 @@ async function connectToMongoDB() {             // line 13 sampai 30 connect to 
         console.log("Connected to MongoDB !");
 
         db = client.db("testDB");
+
+        const existingAdmin = await db.collection('users').findOne({ role: "admin"});
+
+        if (!existingAdmin){
+            await db.collection('users').insertOne({
+                name: "Admin",
+                email: "admin@gmail.com",
+                password: "admin123",
+                role: "admin",
+                status: "active"
+            });
+            console.log("Default admin inserted.");
+        } else {
+            console.log("Admin already exist.");
+        }
     
     } catch (err) {
         console.error("Error:", err);
@@ -33,46 +48,169 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
 
-// GET /rides = Fetch all rides
+// GET /users/:id = Fetch all users ( view profile )
 
-app.get('/rides', async (req, res) => {  // send a GET req to /rides, this fx is triggered
+app.get('/users/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
     try {
-        const rides = await db.collection('rides').find().toArray(); // Find all doc in rides collecton & convert the result into an array
-        res.status(200).json(rides); // sends the ride back to client as JSON with status 200 OK
+        const user = await db.collection('users').findOne({_id: new ObjectId(req.params.id)});
+        if (!user) 
+            return res.status(404).json({ error: "User not found"});
+        res.status(200).json(user); // sends the ride back to client as JSON with status 200 OK
     
     } catch (err) {
-        res.status(500).json({ error: "Failed to fetch ride" }); // If error happens ( like db issues), it sends a 500 internal server error
+        res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
     }
 });
 
-// POST /rides - Create a new ride
+// GET /drivers/:id = Fetch all rides ( view profile )
 
-app.post('/rides', async (req, res) => { // Handles POST req to create a new ride
+app.get('/drivers/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
     try {
-        const result = await db.collection('rides').insertOne(req.body); // Inserts data from the (req.body) into the ride collection
-        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created ride
+        const driver = await db.collection('drivers').findOne({_id: new ObjectId(req.params.id)});
+        if (!driver) 
+            return res.status(404).json({ error: "Driver not found"});
+        res.status(200).json(driver); // sends the ride back to client as JSON with status 200 OK
+    
+    } catch (err) {
+        res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
+    }
+});
+
+// GET /admin/analytics - System overview
+
+app.get('/admin/analytics', async (req, res) => {
+    try {
+        const totalUsers = await db.collection('users').countDocuments();
+        const totalDrivers = await db.collection('drivers').countDocuments();
+        const availableDrivers = await db.collection('drivers').countDocuments({ available: true });
+        const totalRides = await db.collection('rides').countDocuments();
+
+        res.status(200).json ({
+            totalUsers,
+            totalDrivers,
+            totalRides,
+            availableDrivers
+        });
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch analytics" });
+    }
+});
+
+// GET /admin/users - View all users (customers + drivers)
+
+app.get('/admin/users', async (req, res) => {
+    try {
+        const user = await db.collection('users').find().toArray();
+        const driver = await db.collection('drivers').find().toArray();
+
+        res.status(200).json({
+            user,
+            driver
+        })
+    } catch (err) {
+        res.status(500).json({ error: "Failed to fetch users"});
+    }
+});
+
+// POST /users/:id - Customer Registration
+
+app.post('/users', async (req, res) => { // Handles POST req to customer registration
+    try {
+        const result = await db.collection('users').insertOne(req.body); // Inserts data from the (req.body) into the user collection
+        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created user
     
     } catch (err) { 
-        res.status(400).json({ error: "Invalid ride data" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+        res.status(400).json({ error: "Registration failed" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
     }
 });
 
-// PATCH /rides/:id - Update ride status
-// PATCH/users/:id - Cancel a user status
+// POST /drivers - Driver Registration
 
-app.patch('/rides/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
+app.post('/drivers', async (req, res) => { // Handles POST req to driver registration
+    try {
+        const result = await db.collection('drivers').insertOne(req.body); // Inserts data from the (req.body) into the driver collection
+        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created driver
+    
+    } catch (err) { 
+        res.status(400).json({ error: "Registration failed !" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+    }
+});
+
+//POST /rides - request ride
+
+app.post('/rides', async (req, res) => {
+    try {
+        const result = await db.collection('rides').insertOne(req.body);
+        res.status(201).json({ id: result.insertedId});
+    } catch (err) {
+        res.status(400).json({ error: "Failed to request ride"});
+    }
+});
+
+// POST customer/login - customer login
+
+app.post('/users/login', async (req, res) => { // Handles POST req to customer login
+    const { email, password } = req.body;
+
+    try {
+        const user = await db.collection('users').findOne({email, password}); // find data from the (req.body) into the user collection
+        if (!user) {
+            return res.status(401).json({ error: "Invalid email or password" }) //unauthorized
+        }
+    
+        res.status(200).json({ //if successfull it returns 200 OK to login
+            message: "Login successful",
+            id: user._id,
+            name: user.name,
+            role: user.role
+        });
+
+    } catch (err) { 
+        res.status(400).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+    }
+});
+
+// POST driver/login - driver login
+
+app.post('/drivers/login', async (req, res) => { // Handles POST req to customer login
+    const { email, password } = req.body;
+
+    try {
+        const driver = await db.collection('drivers').findOne({email, password}); // find data from the (req.body) into the user collection
+        if (!driver) {
+           return res.status(401).json({ error: "Invalid email or password" }) //unauthorized
+        }
+    
+        res.status(200).json({ //if successfull it returns 200 OK to login
+            message: "Login successful",
+            id: driver._id,
+            name: driver.name,
+            role: driver.role
+        });
+        
+    } catch (err) { 
+        res.status(400).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+    }
+});
+
+
+// PATCH/users/:id -
+
+app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
     
     try {
-        const result = await db.collection('rides').updateOne(  // looks for a ride with the matching ID & updates the status field
+
+        const updateData = req.body;
+        const result = await db.collection('users').updateOne(  // looks for a ride with the matching ID & updates the status field
             {
                  _id: new ObjectId(req.params.id) },
-                 { $set: { status: req.body.status }}
+                 { $set: updateData }
             );
 
             if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
-                return res.status(404).json({ error: "Ride not found"});
+                return res.status(404).json({ error: "User not found or not changes"});
             }
-            res.status(200).json({ updated: result.modifiedCount }); // if successful it returns how many rides were updated (usually 1)
+            res.status(200).json({ message: "User profile updated"}); // if successful it returns how many rides were updated (usually 1)
 
             } catch (err) { // Catches errors like an invalid ID format / bad req data
 
@@ -80,6 +218,51 @@ app.patch('/rides/:id', async (req, res) => { // Handles PATCH req to update a r
                 res.status(400).json({ error: "Invalid ride ID or data" });
             }     
 });
+
+// PATCH /drivers/:id - Update ride status
+
+app.patch('/drivers/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
+    
+    try {
+
+        const updateData = req.body;
+        const result = await db.collection('drivers').updateOne(  // looks for a ride with the matching ID & updates the status field
+            {
+                 _id: new ObjectId(req.params.id) },
+                 { $set: updateData }
+            );
+
+            if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
+                return res.status(404).json({ error: "Driver not found or not changes"});
+            }
+            res.status(200).json({ message: "Driver profile updated"}); // if successful it returns how many rides were updated (usually 1)
+
+            } catch (err) { // Catches errors like an invalid ID format / bad req data
+
+                // Handle invalid ID format or DB errors
+                res.status(400).json({ error: "Invalid driver ID or data" });
+            }     
+});
+
+// PATCH /drivers/:id/availability - Update driver availability
+
+app.patch('/drivers/:id/availability', async (req, res) => {
+    try {
+        const {available} = req.body; // true or false
+
+        const result = await db.collection('drivers').updateOne(
+            {_id: new ObjectId(req.params.id)},
+            {$set: {available}}
+        );
+        if (result.modifiedCount === 0) {
+            res.status(404).json({ error: `Driver not found or no changes`});    
+        }
+        res.status(200).json({ message: `Driver availability set to ${available}`});
+    } catch (err) {
+        res.status(400).json({ error: "Invalid driver ID or request" });
+    }
+});
+
 
 // DELETE /rides/:id - Cancel a ride
 // DELETE /users/:id - Cancel a user
@@ -100,4 +283,3 @@ app.delete('/rides/:id', async (req, res) => { // Handles DELETE req to remove a
         res.status(400).json({ error: "Invalid ride ID" });
     }
 });
-
