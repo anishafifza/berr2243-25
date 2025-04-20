@@ -263,23 +263,75 @@ app.patch('/drivers/:id/availability', async (req, res) => {
     }
 });
 
+// PATCH /admin/users/:id/block - Block or unblock user
 
-// DELETE /rides/:id - Cancel a ride
+app.patch('/admin/users/:id/block', async (req, res) => {
+    
+    const { role } = req.body; // ambil kedua-dua status & role dari body
+    if (role !== 'admin') {
+      return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+
+    try {
+    const { status } = req.body; // should be "active" or "blocked"
+    const result = await db.collection('users').updateOne(
+        {_id: new ObjectId(req.params.id)},
+        { $set: {status} }
+    );
+    if (result.modifiedCount === 0) {
+        return res.status(204).json({ error: "No content" })
+    }
+    res.status(200).json({ message: `User status updated to '${status}'`});
+ } catch (err) {
+    res.status(400).json({ error: "Invalid user ID or request body" });
+ }
+});
+
 // DELETE /users/:id - Cancel a user
 
-app.delete('/rides/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
-    
+app.delete('/users/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
+    const { role } = req.body; // body kena ada "role": "admin"
+
+    if (role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+
     try {
-        const result = await db.collection('rides').deleteOne( // Deletes the ride with the matching ID from the db
+        const result = await db.collection('users').deleteOne( // Deletes the ride with the matching ID from the db
             { _id: new ObjectId(req.params.id) }
         );
 
         if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
-            return res.status(404).json({ error: "Ride not found"});
+            return res.status(404).json({ error: "User not found"});
         }
-        res.status(200).json({ deleted: result.deletedCount}); // on succes, res with hoe many rides were deleted
+        res.status(200).json({ message: "User deleted"}); // on succes, res with hoe many rides were deleted
 
     } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
-        res.status(400).json({ error: "Invalid ride ID" });
+        res.status(400).json({ error: "Invalid user ID" });
     }
 });
+
+// DELETE /drivers/:id - Cancel a driver
+
+app.delete('/drivers/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
+    const { role } = req.body; // body kena ada "role": "admin"
+
+    if (role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+    try {
+        const result = await db.collection('drivers').deleteOne( // Deletes the ride with the matching ID from the db
+            { _id: new ObjectId(req.params.id) }
+        );
+
+        if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
+            return res.status(404).json({ error: "Driver not found"});
+        }
+        res.status(200).json({ message: "Driver deleted"}); // on succes, res with hoe many rides were deleted
+
+    } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
+        res.status(400).json({ error: "Invalid driver ID" });
+    }
+});
+
+
