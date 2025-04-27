@@ -334,7 +334,7 @@ app.patch('/vehicles/:id', async (req, res) => {
             return res.status(404).json({ error: "vehicle not found or no changes"});
         }
         res.status(200).json({ message: "Vehicle updated successfully" });
-        
+
     } catch (err) {
         res.status(400).json({ error: "Invalid vehicle ID or server error" });
     }
@@ -384,6 +384,28 @@ app.delete('/drivers/:id', async (req, res) => { // Handles DELETE req to remove
 
     } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
         res.status(400).json({ error: "Invalid driver ID" });
+    }
+});
+
+// DELETE /vehicles/:id - Cancel a vehicle Id
+
+app.delete('/vehicles/:id', async (req, res) => {
+    const { role } = req.body; // body kena ada "role": "admin"
+
+    if (role !== 'admin') {
+        return res.status(403).json({ error: "Access denied. Admins only." });
+    }
+    try {
+        const result = await db.collection('vehicles').deleteOne(
+            { _id: new ObjectId(req.params.id) }
+        );
+
+        if (result.deletedCount === 0) {
+            return res.status(404).json({ error: "Vehicle not found"});
+        }
+        res.status(200).json({ message: "Vehicle deleted"});
+    } catch (err) {
+        res.status(400).json({ error: "Invalid vehicle ID" });
     }
 });
 
