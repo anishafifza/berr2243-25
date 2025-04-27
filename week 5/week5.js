@@ -157,6 +157,11 @@ app.post('/drivers', async (req, res) => { // Handles POST req to driver registr
 
 app.post('/rides', async (req, res) => {
     try {
+        const rideData = {
+            ...req.body,
+            dateTime: new Date()
+        };
+        
         const result = await db.collection('rides').insertOne(req.body);
         res.status(201).json({ id: result.insertedId});
     } catch (err) {
@@ -233,7 +238,10 @@ app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a r
     
     try {
 
-        const updateData = req.body;
+        const updateData = {
+            ...req.body,
+            updateAt: new Date()
+        };
         const result = await db.collection('users').updateOne(  // looks for a ride with the matching ID & updates the status field
             {
                  _id: new ObjectId(req.params.id) },
