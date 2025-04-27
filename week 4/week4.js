@@ -198,6 +198,17 @@ app.post('/drivers/login', async (req, res) => { // Handles POST req to customer
     }
 });
 
+// POST driver/vehicle - add a vehicle for driver
+
+app.post('/vehicles', async (req, res) => {
+    try {
+        const result = await db.collection('vehicles').insertOne(req.body);
+        res.status(201).json({ id: result.insertId });
+    } catch (err) {
+        res.status(400).json({ error: "Failed to register vehicle"});
+    }
+});
+
 
 // PATCH/users/:id -
 
