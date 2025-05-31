@@ -48,6 +48,8 @@ async function connectToMongoDB() {             // line 13 sampai 30 connect to 
     } 
 }
 
+connectToMongoDB();
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
@@ -168,7 +170,7 @@ app.post('/users', async (req, res) => { // Handles POST req to customer registr
         res.status(201).json({ message: "User Created" }) // send back ID of the newly created user
     
     } catch (err) { 
-        res.status(400).json({ error: "Registration failed" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+        res.status(400).json({ error: "Registration failed. Email may already exist." }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
     }
 });
 
@@ -207,7 +209,10 @@ app.post('/rides', async (req, res) => {
 app.post('/users/login', async (req, res) => 
     {
         try {
-            const user = await db.collection('users').findOne({email: req.body.email}); // find data from the (req.body.email) into the user collection
+            const { email, password } = req.body;
+            console.log("Login attempt:", email);
+
+            const user = await db.collection('users').findOne({ email }); // find data from the (req.body.email) into the user collection
             
             if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
                 return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
@@ -219,7 +224,9 @@ app.post('/users/login', async (req, res) =>
             );
             
             res.status(200).json({ token }); // Return token to client
+        
         } catch (error) {
+            console.error("Login error:", error);
         res.status(500).json({ error: "Server error" }); // Handle unexpected errors
         }
     });
