@@ -48,6 +48,30 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
 
+//Craete Authentication Middleware
+
+const jwt = require('jsonwebtoken');
+
+const authenticate = (req, res, next) => {
+    const token = req.headers.authorization?.split('')[1];
+
+    if (!token) return res.status(401).json({ error: "Unauthorized" });
+
+    try{
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        req.user = decoded;
+        next();
+    } catch (err) {
+        res.status(401).json({ error: "Invalid Token" });
+    }
+};
+
+const authorize = (roles) => (req, res, next) => {
+    if (!token.includes(req.user.role))
+        return res.status(403).json({ error: "Forbidden" });
+    next();
+};
+
 // GET /users/:id = Fetch all users ( view profile )
 
 app.get('/users/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
@@ -131,10 +155,15 @@ app.get('/vehicles/drivers/:driverId', async (req, res) => {
 
 // POST /users/:id - Customer Registration
 
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
 app.post('/users', async (req, res) => { // Handles POST req to customer registration
     try {
-        const result = await db.collection('users').insertOne(req.body); // Inserts data from the (req.body) into the user collection
-        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created user
+        const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
+        const user = { ...req.body, password: hashedPassword };
+        const result = await db.collection('users').insertOne(user); // Inserts data from the (user) into the user collection
+        res.status(201).json({ message: "User Created" }) // send back ID of the newly created user
     
     } catch (err) { 
         res.status(400).json({ error: "Registration failed" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
@@ -145,8 +174,10 @@ app.post('/users', async (req, res) => { // Handles POST req to customer registr
 
 app.post('/drivers', async (req, res) => { // Handles POST req to driver registration
     try {
-        const result = await db.collection('drivers').insertOne(req.body); // Inserts data from the (req.body) into the driver collection
-        res.status(201).json({ id: result.insertedId }) // send back ID of the newly created driver
+        const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
+        const driver = { ...req.body, password: hashedPassword};
+        const result = await db.collection('drivers').insertOne(driver); // Inserts data from the (driver) into the driver collection
+        res.status(201).json({ message: "Driver Created"}) // send back ID of the newly created driver
     
     } catch (err) { 
         res.status(400).json({ error: "Registration failed !" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
@@ -171,52 +202,48 @@ app.post('/rides', async (req, res) => {
 
 // POST customer/login - customer login
 
-app.post('/users/login', async (req, res) => { // Handles POST req to customer login
-    const { email, password } = req.body;
+const jwt= require('jsonwebtoken');
 
-    try {
-        const user = await db.collection('users').findOne({email, password}); // find data from the (req.body) into the user collection
-        
-        if (!user) {
-            return res.status(401).json({ error: "Invalid email or password" }) //unauthorized
+app.post('/users/login', async (req, res) => 
+    {
+        try {
+            const user = await db.collection('users').findOne({email: req.body.email}); // find data from the (req.body.email) into the user collection
+            
+            if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
+                return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
+            }
+            const token = jwt.sign(
+                { userId: user._id, role: user.role },
+                process.env.JWT_SECRET,
+                { expiresIn: process.env.JWT_EXPIRES_IN }
+            );
+            
+            res.status(200).json({ token }); // Return token to client
+        } catch (error) {
+        res.status(500).json({ error: "Server error" }); // Handle unexpected errors
         }
-        
-        if (user.status === "blocked"){
-            return res.status(403).json({ error: "Your account has been blocked" });
-        }
-    
-        res.status(200).json({ //if successfull it returns 200 OK to login
-            message: "Login successful",
-            id: user._id,
-            name: user.name,
-            role: user.role
-        });
-
-    } catch (err) { 
-        res.status(400).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
-    }
-});
+    });
 
 // POST driver/login - driver login
 
 app.post('/drivers/login', async (req, res) => { // Handles POST req to customer login
-    const { email, password } = req.body;
-
-    try {
-        const driver = await db.collection('drivers').findOne({email, password}); // find data from the (req.body) into the user collection
-        if (!driver) {
-           return res.status(401).json({ error: "Invalid email or password" }) //unauthorized
-        }
     
-        res.status(200).json({ //if successfull it returns 200 OK to login
-            message: "Login successful",
-            id: driver._id,
-            name: driver.name,
-            role: driver.role
-        });
+    try {
+        const driver = await db.collection('drivers').findOne({email: req.body.email}); // find data from the (req.body) into the user collection
+       
+        if (!driver || !(await bcrypt.compare(req.body.password, driver.password))) {
+           return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
+        }
+        const token = jwt.sign(
+            { driverId: driver._id, role: driver.role },
+            process.env.JWT_SECRET,
+            { expiresIn: process.env.JWT_EXPIRES_IN }
+        );
+    
+        res.status(200).json({ token }); //if successfull it returns 200 OK to login
         
     } catch (err) { 
-        res.status(400).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+        res.status(500).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
     }
 });
 
@@ -417,4 +444,10 @@ app.delete('/vehicles/:id', async (req, res) => {
     }
 });
 
+// DELETE /admin/users/:id to admins
+
+app.delete('/admin/users.:id', authenticate, authorize(['admin']), async (req, res) => {
+    console.log("admin only");
+    res.status(200).send("admin access");
+});
 
