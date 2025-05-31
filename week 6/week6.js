@@ -2,8 +2,12 @@
 // function node is run to code "node index.js"
 
 const express = require ('express'); // Node.js framework to build API's web app
-const { MongoClient, ObjectId, MongoDBCollectionNamespace } = require('mongodb');
 const port = 3000; // create port and server
+const env = require('dotenv').config();
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+const { MongoClient, ObjectId } = require('mongodb');
+
 
 const app = express();
 app.use(express.json());
@@ -23,13 +27,14 @@ async function connectToMongoDB() {             // line 13 sampai 30 connect to 
 
         db = client.db("testDB");
 
-        const existingAdmin = await db.collection('users').findOne({ role: "admin"});
-
+        const existingAdmin = await db.collection('users').findOne({ email: "admin@gmail.com" });
+        
         if (!existingAdmin){
+            const hashedPassword = await bcrypt.hash("admin123", saltRounds);
             await db.collection('users').insertOne({
                 name: "Admin",
                 email: "admin@gmail.com",
-                password: "admin123",
+                password: hashedPassword,
                 role: "admin",
                 status: "active"
             });
@@ -42,7 +47,6 @@ async function connectToMongoDB() {             // line 13 sampai 30 connect to 
         console.error("Error:", err);
     } 
 }
-connectToMongoDB();
 
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
@@ -53,7 +57,7 @@ app.listen(port, () => {
 const jwt = require('jsonwebtoken');
 
 const authenticate = (req, res, next) => {
-    const token = req.headers.authorization?.split('')[1];
+    const token = req.headers.authorization?.split(' ')[1];
 
     if (!token) return res.status(401).json({ error: "Unauthorized" });
 
@@ -67,7 +71,7 @@ const authenticate = (req, res, next) => {
 };
 
 const authorize = (roles) => (req, res, next) => {
-    if (!token.includes(req.user.role))
+    if (!roles.includes(req.user.role))
         return res.status(403).json({ error: "Forbidden" });
     next();
 };
@@ -102,7 +106,7 @@ app.get('/drivers/:id', async (req, res) => {  // send a GET req to /rides, this
 
 // GET /admin/analytics - System overview
 
-app.get('/admin/analytics', async (req, res) => {
+app.get('/admin/analytics', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const totalUsers = await db.collection('users').countDocuments();
         const totalDrivers = await db.collection('drivers').countDocuments();
@@ -122,7 +126,7 @@ app.get('/admin/analytics', async (req, res) => {
 
 // GET /admin/users - View all users (customers + drivers)
 
-app.get('/admin/users', async (req, res) => {
+app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => {
     try {
         const user = await db.collection('users').find().toArray();
         const driver = await db.collection('drivers').find().toArray();
@@ -155,8 +159,6 @@ app.get('/vehicles/drivers/:driverId', async (req, res) => {
 
 // POST /users/:id - Customer Registration
 
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
 
 app.post('/users', async (req, res) => { // Handles POST req to customer registration
     try {
@@ -193,7 +195,7 @@ app.post('/rides', async (req, res) => {
             dateTime: new Date()
         };
         
-        const result = await db.collection('rides').insertOne(req.body);
+        const result = await db.collection('rides').insertOne(rideData);
         res.status(201).json({ id: result.insertedId});
     } catch (err) {
         res.status(400).json({ error: "Failed to request ride"});
@@ -201,8 +203,6 @@ app.post('/rides', async (req, res) => {
 });
 
 // POST customer/login - customer login
-
-const jwt= require('jsonwebtoken');
 
 app.post('/users/login', async (req, res) => 
     {
@@ -247,7 +247,7 @@ app.post('/drivers/login', async (req, res) => { // Handles POST req to customer
     }
 });
 
-// POST vechiles - register vehicles for driver
+// POST vehicles - register vehicles for driver
 
 app.post('/vehicles', async (req, res) => {
     try {
@@ -275,7 +275,7 @@ app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a r
                  { $set: updateData }
             );
 
-            if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
+            if (result.matchedCount === 0) { // if no ride was updated, it returns 404 Not Found
                 return res.status(404).json({ error: "User not found or not changes"});
             }
             res.status(200).json({ message: "User profile updated"}); // if successful it returns how many rides were updated (usually 1)
@@ -377,8 +377,9 @@ app.patch('/vehicles/:id', async (req, res) => {
 
 // DELETE /users/:id - Cancel a user
 
-app.delete('/users/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
+app.delete('/users/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
     const { role } = req.body; // body kena ada "role": "admin"
+    console.log("Admin Only");
 
     if (role !== 'admin') {
         return res.status(403).json({ error: "Access denied. Admins only." });
@@ -392,7 +393,7 @@ app.delete('/users/:id', async (req, res) => { // Handles DELETE req to remove a
         if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
             return res.status(404).json({ error: "User not found"});
         }
-        res.status(200).json({ message: "User deleted"}); // on succes, res with hoe many rides were deleted
+        res.status(200).json({ message: "User successfully deleted by Admin"}); // on succes, res with hoe many rides were deleted
 
     } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
         res.status(400).json({ error: "Invalid user ID" });
@@ -401,8 +402,9 @@ app.delete('/users/:id', async (req, res) => { // Handles DELETE req to remove a
 
 // DELETE /drivers/:id - Cancel a driver
 
-app.delete('/drivers/:id', async (req, res) => { // Handles DELETE req to remove a ride or user by ID
+app.delete('/drivers/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
     const { role } = req.body; // body kena ada "role": "admin"
+    console.log("Admin Only");
 
     if (role !== 'admin') {
         return res.status(403).json({ error: "Access denied. Admins only." });
@@ -415,7 +417,7 @@ app.delete('/drivers/:id', async (req, res) => { // Handles DELETE req to remove
         if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
             return res.status(404).json({ error: "Driver not found"});
         }
-        res.status(200).json({ message: "Driver deleted"}); // on succes, res with hoe many rides were deleted
+        res.status(200).json({ message: "successfully deleted by Admin"}); // on succes, res with hoe many rides were deleted
 
     } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
         res.status(400).json({ error: "Invalid driver ID" });
@@ -424,8 +426,9 @@ app.delete('/drivers/:id', async (req, res) => { // Handles DELETE req to remove
 
 // DELETE /vehicles/:id - Cancel a vehicle Id
 
-app.delete('/vehicles/:id', async (req, res) => {
+app.delete('/vehicles/:id', authenticate, authorize(['admin']), async (req, res) => {
     const { role } = req.body; // body kena ada "role": "admin"
+    console.log("Admin Only");
 
     if (role !== 'admin') {
         return res.status(403).json({ error: "Access denied. Admins only." });
@@ -438,16 +441,10 @@ app.delete('/vehicles/:id', async (req, res) => {
         if (result.deletedCount === 0) {
             return res.status(404).json({ error: "Vehicle not found"});
         }
-        res.status(200).json({ message: "Vehicle deleted"});
+        res.status(200).json({ message: "successfully deleted by Admin"});
     } catch (err) {
         res.status(400).json({ error: "Invalid vehicle ID" });
     }
 });
 
-// DELETE /admin/users/:id to admins
-
-app.delete('/admin/users.:id', authenticate, authorize(['admin']), async (req, res) => {
-    console.log("admin only");
-    res.status(200).send("admin access");
-});
 
