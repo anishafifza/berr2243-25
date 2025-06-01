@@ -3,9 +3,7 @@
 
 const express = require ('express'); // Node.js framework to build API's web app
 const port = 3000; // create port and server
-const env = require('dotenv').config();
-const bcrypt = require('bcrypt');
-const saltRounds = 10;
+const env = require('dotenv').config()
 const { MongoClient, ObjectId } = require('mongodb');
 
 
@@ -54,7 +52,159 @@ app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
 
-//Craete Authentication Middleware
+
+// // GET /users/:id = Fetch all users ( view profile )
+
+// app.get('/users/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
+//     try {
+//         const user = await db.collection('users').findOne({_id: new ObjectId(req.params.id)});
+//         if (!user) 
+//             return res.status(404).json({ error: "User not found"});
+//         res.status(200).json(user); // sends the ride back to client as JSON with status 200 OK
+    
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
+//     }
+// });
+
+// // GET /drivers/:id = Fetch all rides ( view profile )
+
+// app.get('/drivers/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
+//     try {
+//         const driver = await db.collection('drivers').findOne({_id: new ObjectId(req.params.id)});
+//         if (!driver) 
+//             return res.status(404).json({ error: "Driver not found"});
+//         res.status(200).json(driver); // sends the ride back to client as JSON with status 200 OK
+    
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
+//     }
+// });
+
+// // GET /admin/analytics - System overview
+
+// app.get('/admin/analytics', authenticate, authorize(['admin']), async (req, res) => {
+//     try {
+//         const totalUsers = await db.collection('users').countDocuments();
+//         const totalDrivers = await db.collection('drivers').countDocuments();
+//         const availableDrivers = await db.collection('drivers').countDocuments({ available: true });
+//         const totalRides = await db.collection('rides').countDocuments();
+
+//         res.status(200).json ({
+//             totalUsers,
+//             totalDrivers,
+//             totalRides,
+//             availableDrivers
+//         });
+//     } catch (err) {
+//         res.status(500).json({ error: "Failed to fetch analytics" });
+//     }
+// });
+
+// // GET /admin/users - View all users (customers + drivers)
+
+// app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => {
+//     try {
+//         const user = await db.collection('users').find().toArray();
+//         const driver = await db.collection('drivers').find().toArray();
+
+//         res.status(200).json({
+//             user,
+//             driver
+//         })
+//     } catch (err) {
+//         res.status(500).json({ error: "Failed to fetch users"});
+//     }
+// });
+
+// // GET /vehicles/drivers/:driversId - View the vehicle (by driverId)
+
+// app.get('/vehicles/drivers/:driverId', async (req, res) => {
+//     try{
+//         const vehicle = await db.collection('vehicles').findOne({
+//             driverId: req.params.driverId
+//         });
+
+//         if (!vehicle) {
+//             return res.status(404).json({ error: "Vehicle not found" });
+//         }
+//         res.status(200).json(vehicle);
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid driver ID or server error" });
+//     }
+// });
+
+// POST /users/:id - Customer Registration
+
+const bcrypt = require('bcrypt');
+const saltRounds = 10;
+
+app.post('/users', async (req, res) => { // Handles POST req to customer registration
+    try {
+        const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
+        const user = { ...req.body, password: hashedPassword };
+        const result = await db.collection('users').insertOne(user); // Inserts data from the (user) into the user collection
+        res.status(201).json({ message: "User Created" }) // send back ID of the newly created user
+    
+    } catch (err) { 
+        res.status(400).json({ error: "Registration failed" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+    }
+});
+
+
+// POST /drivers - Driver Registration
+
+// app.post('/drivers', async (req, res) => { // Handles POST req to driver registration
+//     try {
+//         const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
+//         const driver = { ...req.body, password: hashedPassword};
+//         const result = await db.collection('drivers').insertOne(driver); // Inserts data from the (driver) into the driver collection
+//         res.status(201).json({ message: "Driver Created"}) // send back ID of the newly created driver
+    
+//     } catch (err) { 
+//         res.status(400).json({ error: "Registration failed !" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+//     }
+// });
+
+// //POST /rides - request ride
+
+// app.post('/rides', async (req, res) => {
+//     try {
+//         const rideData = {
+//             ...req.body,
+//             dateTime: new Date()
+//         };
+        
+//         const result = await db.collection('rides').insertOne(rideData);
+//         res.status(201).json({ id: result.insertedId});
+//     } catch (err) {
+//         res.status(400).json({ error: "Failed to request ride"});
+//     }
+// });
+
+// POST customer/login - customer login
+
+const jwt = require('jsonwebtoken');
+
+app.post('/auth/login', async (req, res) => {
+    const user = await db.collection('users').findOne({ email: req.body.email });
+    {
+            if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
+                return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
+            }
+
+            const token = jwt.sign(
+               { userId: user._id, role: user.role },
+               process.env.JWT_SECRET,
+               { expiresIn: process.env.JWT_EXPIRES_IN }
+            );
+
+            res.status(200).json({ token }); // Return token to clien
+    }
+    });
+
+
+    //Create Authentication Middleware
 
 const jwt = require('jsonwebtoken');
 
@@ -78,380 +228,210 @@ const authorize = (roles) => (req, res, next) => {
     next();
 };
 
-// GET /users/:id = Fetch all users ( view profile )
-
-app.get('/users/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
-    try {
-        const user = await db.collection('users').findOne({_id: new ObjectId(req.params.id)});
-        if (!user) 
-            return res.status(404).json({ error: "User not found"});
-        res.status(200).json(user); // sends the ride back to client as JSON with status 200 OK
-    
-    } catch (err) {
-        res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
-    }
-});
-
-// GET /drivers/:id = Fetch all rides ( view profile )
-
-app.get('/drivers/:id', async (req, res) => {  // send a GET req to /rides, this fx is triggered
-    try {
-        const driver = await db.collection('drivers').findOne({_id: new ObjectId(req.params.id)});
-        if (!driver) 
-            return res.status(404).json({ error: "Driver not found"});
-        res.status(200).json(driver); // sends the ride back to client as JSON with status 200 OK
-    
-    } catch (err) {
-        res.status(400).json({ error: "Invalid ID or server error" }); // If error happens ( like db issues), it sends a 400 invalid id or internal server error
-    }
-});
-
-// GET /admin/analytics - System overview
-
-app.get('/admin/analytics', authenticate, authorize(['admin']), async (req, res) => {
-    try {
-        const totalUsers = await db.collection('users').countDocuments();
-        const totalDrivers = await db.collection('drivers').countDocuments();
-        const availableDrivers = await db.collection('drivers').countDocuments({ available: true });
-        const totalRides = await db.collection('rides').countDocuments();
-
-        res.status(200).json ({
-            totalUsers,
-            totalDrivers,
-            totalRides,
-            availableDrivers
-        });
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch analytics" });
-    }
-});
-
-// GET /admin/users - View all users (customers + drivers)
-
-app.get('/admin/users', authenticate, authorize(['admin']), async (req, res) => {
-    try {
-        const user = await db.collection('users').find().toArray();
-        const driver = await db.collection('drivers').find().toArray();
-
-        res.status(200).json({
-            user,
-            driver
-        })
-    } catch (err) {
-        res.status(500).json({ error: "Failed to fetch users"});
-    }
-});
-
-// GET /vehicles/drivers/:driversId - View the vehicle (by driverId)
-
-app.get('/vehicles/drivers/:driverId', async (req, res) => {
-    try{
-        const vehicle = await db.collection('vehicles').findOne({
-            driverId: req.params.driverId
-        });
-
-        if (!vehicle) {
-            return res.status(404).json({ error: "Vehicle not found" });
-        }
-        res.status(200).json(vehicle);
-    } catch (err) {
-        res.status(400).json({ error: "Invalid driver ID or server error" });
-    }
-});
-
-// POST /users/:id - Customer Registration
-
-
-app.post('/users', async (req, res) => { // Handles POST req to customer registration
-    try {
-        const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
-        const user = { ...req.body, password: hashedPassword };
-        const result = await db.collection('users').insertOne(user); // Inserts data from the (user) into the user collection
-        res.status(201).json({ message: "User Created" }) // send back ID of the newly created user
-    
-    } catch (err) { 
-        res.status(400).json({ error: "Registration failed. Email may already exist." }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
-    }
-});
-
-// POST /drivers - Driver Registration
-
-app.post('/drivers', async (req, res) => { // Handles POST req to driver registration
-    try {
-        const hashedPassword = await bcrypt.hash (req.body.password, saltRounds);
-        const driver = { ...req.body, password: hashedPassword};
-        const result = await db.collection('drivers').insertOne(driver); // Inserts data from the (driver) into the driver collection
-        res.status(201).json({ message: "Driver Created"}) // send back ID of the newly created driver
-    
-    } catch (err) { 
-        res.status(400).json({ error: "Registration failed !" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
-    }
-});
-
-//POST /rides - request ride
-
-app.post('/rides', async (req, res) => {
-    try {
-        const rideData = {
-            ...req.body,
-            dateTime: new Date()
-        };
-        
-        const result = await db.collection('rides').insertOne(rideData);
-        res.status(201).json({ id: result.insertedId});
-    } catch (err) {
-        res.status(400).json({ error: "Failed to request ride"});
-    }
-});
-
-// POST customer/login - customer login
-
-app.post('/users/login', async (req, res) => 
-    {
-        try {
-            const { email, password } = req.body;
-            console.log("Login attempt:", email);
-
-            const user = await db.collection('users').findOne({ email }); // find data from the (req.body.email) into the user collection
-            
-            if (!user || !(await bcrypt.compare(req.body.password, user.password))) {
-                return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
-            }
-            const token = jwt.sign(
-                { userId: user._id, role: user.role },
-                process.env.JWT_SECRET,
-                { expiresIn: process.env.JWT_EXPIRES_IN }
-            );
-            
-            res.status(200).json({ token }); // Return token to client
-        
-        } catch (error) {
-            console.error("Login error:", error);
-        res.status(500).json({ error: "Server error" }); // Handle unexpected errors
-        }
-    });
-
 // POST driver/login - driver login
 
-app.post('/drivers/login', async (req, res) => { // Handles POST req to customer login
+// app.post('/drivers/login', async (req, res) => { // Handles POST req to customer login
     
-    try {
-        const driver = await db.collection('drivers').findOne({email: req.body.email}); // find data from the (req.body) into the user collection
+//     try {
+//         const driver = await db.collection('drivers').findOne({email: req.body.email}); // find data from the (req.body) into the user collection
        
-        if (!driver || !(await bcrypt.compare(req.body.password, driver.password))) {
-           return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
-        }
-        const token = jwt.sign(
-            { driverId: driver._id, role: driver.role },
-            process.env.JWT_SECRET,
-            { expiresIn: process.env.JWT_EXPIRES_IN }
-        );
+//         if (!driver || !(await bcrypt.compare(req.body.password, driver.password))) {
+//            return res.status(401).json({ error: "Invalid credentials" }) //unauthorized
+//         }
+//         const token = jwt.sign(
+//             { driverId: driver._id, role: driver.role },
+//             process.env.JWT_SECRET,
+//             { expiresIn: process.env.JWT_EXPIRES_IN }
+//         );
     
-        res.status(200).json({ token }); //if successfull it returns 200 OK to login
+//         res.status(200).json({ token }); //if successfull it returns 200 OK to login
         
-    } catch (err) { 
-        res.status(500).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
-    }
-});
+//     } catch (err) { 
+//         res.status(500).json({ error: "Something went wrong" }); // If something goes wrong ( missing / bad data ) it returns a 400 Bad req
+//     }
+// });
 
-// POST vehicles - register vehicles for driver
+// // POST vehicles - register vehicles for driver
 
-app.post('/vehicles', async (req, res) => {
-    try {
-        const result = await db.collection('vehicles').insertOne(req.body);
-        res.status(201).json({ id: result.insertedId });
-    } catch (err) {
-        res.status(400).json({ error: "Failed to register vehicle"});
-    }
-});
+// app.post('/vehicles', async (req, res) => {
+//     try {
+//         const result = await db.collection('vehicles').insertOne(req.body);
+//         res.status(201).json({ id: result.insertedId });
+//     } catch (err) {
+//         res.status(400).json({ error: "Failed to register vehicle"});
+//     }
+// });
 
 
 // PATCH/users/:id -
 
-app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
+// app.patch('/users/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
     
-    try {
+//     try {
 
-        const updateData = {
-            ...req.body,
-            updateAt: new Date()
-        };
-        const result = await db.collection('users').updateOne(  // looks for a ride with the matching ID & updates the status field
-            {
-                 _id: new ObjectId(req.params.id) },
-                 { $set: updateData }
-            );
+//         const updateData = {
+//             ...req.body,
+//             updateAt: new Date()
+//         };
+//         const result = await db.collection('users').updateOne(  // looks for a ride with the matching ID & updates the status field
+//             {
+//                  _id: new ObjectId(req.params.id) },
+//                  { $set: updateData }
+//             );
 
-            if (result.matchedCount === 0) { // if no ride was updated, it returns 404 Not Found
-                return res.status(404).json({ error: "User not found or not changes"});
-            }
-            res.status(200).json({ message: "User profile updated"}); // if successful it returns how many rides were updated (usually 1)
+//             if (result.matchedCount === 0) { // if no ride was updated, it returns 404 Not Found
+//                 return res.status(404).json({ error: "User not found or not changes"});
+//             }
+//             res.status(200).json({ message: "User profile updated"}); // if successful it returns how many rides were updated (usually 1)
 
-            } catch (err) { // Catches errors like an invalid ID format / bad req data
+//             } catch (err) { // Catches errors like an invalid ID format / bad req data
 
-                // Handle invalid ID format or DB errors
-                res.status(400).json({ error: "Invalid ride ID or data" });
-            }     
-});
+//                 // Handle invalid ID format or DB errors
+//                 res.status(400).json({ error: "Invalid ride ID or data" });
+//             }     
+// });
 
-// PATCH /drivers/:id - Update ride status
+// // PATCH /drivers/:id - Update ride status
 
-app.patch('/drivers/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
+// app.patch('/drivers/:id', async (req, res) => { // Handles PATCH req to update a ride/user by its ID
     
-    try {
+//     try {
 
-        const updateData = req.body;
-        const result = await db.collection('drivers').updateOne(  // looks for a ride with the matching ID & updates the status field
-            {
-                 _id: new ObjectId(req.params.id) },
-                 { $set: updateData }
-            );
+//         const updateData = req.body;
+//         const result = await db.collection('drivers').updateOne(  // looks for a ride with the matching ID & updates the status field
+//             {
+//                  _id: new ObjectId(req.params.id) },
+//                  { $set: updateData }
+//             );
 
-            if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
-                return res.status(404).json({ error: "Driver not found or not changes"});
-            }
-            res.status(200).json({ message: "Driver profile updated"}); // if successful it returns how many rides were updated (usually 1)
+//             if (result.modifiedCount === 0) { // if no ride was updated, it returns 404 Not Found
+//                 return res.status(404).json({ error: "Driver not found or not changes"});
+//             }
+//             res.status(200).json({ message: "Driver profile updated"}); // if successful it returns how many rides were updated (usually 1)
 
-            } catch (err) { // Catches errors like an invalid ID format / bad req data
+//             } catch (err) { // Catches errors like an invalid ID format / bad req data
 
-                // Handle invalid ID format or DB errors
-                res.status(400).json({ error: "Invalid driver ID or data" });
-            }     
-});
+//                 // Handle invalid ID format or DB errors
+//                 res.status(400).json({ error: "Invalid driver ID or data" });
+//             }     
+// });
 
-// PATCH /drivers/:id/availability - Update driver availability
+// // PATCH /drivers/:id/availability - Update driver availability
 
-app.patch('/drivers/:id/availability', async (req, res) => {
-    try {
-        const {available} = req.body; // true or false
+// app.patch('/drivers/:id/availability', async (req, res) => {
+//     try {
+//         const {available} = req.body; // true or false
 
-        const result = await db.collection('drivers').updateOne(
-            {_id: new ObjectId(req.params.id)},
-            {$set: {available}}
-        );
-        if (result.modifiedCount === 0) {
-            res.status(404).json({ error: `Driver not found or no changes`});    
-        }
-        res.status(200).json({ message: `Driver availability set to ${available}`});
-    } catch (err) {
-        res.status(400).json({ error: "Invalid driver ID or request" });
-    }
-});
+//         const result = await db.collection('drivers').updateOne(
+//             {_id: new ObjectId(req.params.id)},
+//             {$set: {available}}
+//         );
+//         if (result.modifiedCount === 0) {
+//             res.status(404).json({ error: `Driver not found or no changes`});    
+//         }
+//         res.status(200).json({ message: `Driver availability set to ${available}`});
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid driver ID or request" });
+//     }
+// });
 
-// PATCH /admin/users/:id/block - Block or unblock user
+// // PATCH /admin/users/:id/block - Block or unblock user
 
-app.patch('/admin/users/:id/block', async (req, res) => {
+// app.patch('/admin/users/:id/block', async (req, res) => {
     
-    const { role } = req.body; // ambil kedua-dua status & role dari body
-    if (role !== 'admin') {
-      return res.status(403).json({ error: "Access denied. Admins only." });
-    }
+//     const { role } = req.body; // ambil kedua-dua status & role dari body
+//     if (role !== 'admin') {
+//       return res.status(403).json({ error: "Access denied. Admins only." });
+//     }
 
-    try {
-    const { status } = req.body; // should be "active" or "blocked"
-    const result = await db.collection('users').updateOne(
-        {_id: new ObjectId(req.params.id)},
-        { $set: {status} }
-    );
-    if (result.modifiedCount === 0) {
-        return res.status(204).json({ error: "No content" })
-    }
-    res.status(200).json({ message: `User status updated to '${status}'`});
- } catch (err) {
-    res.status(400).json({ error: "Invalid user ID or request body" });
- }
-});
+//     try {
+//     const { status } = req.body; // should be "active" or "blocked"
+//     const result = await db.collection('users').updateOne(
+//         {_id: new ObjectId(req.params.id)},
+//         { $set: {status} }
+//     );
+//     if (result.modifiedCount === 0) {
+//         return res.status(204).json({ error: "No content" })
+//     }
+//     res.status(200).json({ message: `User status updated to '${status}'`});
+//  } catch (err) {
+//     res.status(400).json({ error: "Invalid user ID or request body" });
+//  }
+// });
 
 
-// PATCH /vehicles/:id - update vehicle details
+// // PATCH /vehicles/:id - update vehicle details
 
-app.patch('/vehicles/:id', async (req, res) => {
-    try {
-        const result = await db.collection('vehicles').updateOne(
-            {_id: new ObjectId(req.params.id)},
-            {$set: req.body}
-        );
+// app.patch('/vehicles/:id', async (req, res) => {
+//     try {
+//         const result = await db.collection('vehicles').updateOne(
+//             {_id: new ObjectId(req.params.id)},
+//             {$set: req.body}
+//         );
         
-        if (result.modifiedCount === 0) {
-            return res.status(404).json({ error: "vehicle not found or no changes"});
-        }
-        res.status(200).json({ message: "Vehicle updated successfully" });
+//         if (result.modifiedCount === 0) {
+//             return res.status(404).json({ error: "vehicle not found or no changes"});
+//         }
+//         res.status(200).json({ message: "Vehicle updated successfully" });
 
-    } catch (err) {
-        res.status(400).json({ error: "Invalid vehicle ID or server error" });
-    }
-});
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid vehicle ID or server error" });
+//     }
+// });
 
 // DELETE /users/:id - Cancel a user
 
-app.delete('/users/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
-    const { role } = req.body; // body kena ada "role": "admin"
+app.delete('/admin/users/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
     console.log("Admin Only");
-
-    if (role !== 'admin') {
-        return res.status(403).json({ error: "Access denied. Admins only." });
-    }
-
-    try {
-        const result = await db.collection('users').deleteOne( // Deletes the ride with the matching ID from the db
-            { _id: new ObjectId(req.params.id) }
-        );
-
-        if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
-            return res.status(404).json({ error: "User not found"});
-        }
-        res.status(200).json({ message: "User successfully deleted by Admin"}); // on succes, res with hoe many rides were deleted
-
-    } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
-        res.status(400).json({ error: "Invalid user ID" });
-    }
+    res.status(200).send("admin access");
 });
 
-// DELETE /drivers/:id - Cancel a driver
 
-app.delete('/drivers/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
-    const { role } = req.body; // body kena ada "role": "admin"
-    console.log("Admin Only");
+// // DELETE /drivers/:id - Cancel a driver
 
-    if (role !== 'admin') {
-        return res.status(403).json({ error: "Access denied. Admins only." });
-    }
-    try {
-        const result = await db.collection('drivers').deleteOne( // Deletes the ride with the matching ID from the db
-            { _id: new ObjectId(req.params.id) }
-        );
+// app.delete('/drivers/:id', authenticate, authorize(['admin']), async (req, res) => { // Handles DELETE req to remove a ride or user by ID
+//     const { role } = req.body; // body kena ada "role": "admin"
+//     console.log("Admin Only");
 
-        if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
-            return res.status(404).json({ error: "Driver not found"});
-        }
-        res.status(200).json({ message: "successfully deleted by Admin"}); // on succes, res with hoe many rides were deleted
+//     if (role !== 'admin') {
+//         return res.status(403).json({ error: "Access denied. Admins only." });
+//     }
+//     try {
+//         const result = await db.collection('drivers').deleteOne( // Deletes the ride with the matching ID from the db
+//             { _id: new ObjectId(req.params.id) }
+//         );
 
-    } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
-        res.status(400).json({ error: "Invalid driver ID" });
-    }
-});
+//         if (result.deletedCount === 0) { // if nothing was deleted, the ride probably didn't exist - return 404
+//             return res.status(404).json({ error: "Driver not found"});
+//         }
+//         res.status(200).json({ message: "successfully deleted by Admin"}); // on succes, res with hoe many rides were deleted
 
-// DELETE /vehicles/:id - Cancel a vehicle Id
+//     } catch (err) { // catch & return 400 Bad req for invalid IDs / other errors
+//         res.status(400).json({ error: "Invalid driver ID" });
+//     }
+// });
 
-app.delete('/vehicles/:id', authenticate, authorize(['admin']), async (req, res) => {
-    const { role } = req.body; // body kena ada "role": "admin"
-    console.log("Admin Only");
+// // DELETE /vehicles/:id - Cancel a vehicle Id
 
-    if (role !== 'admin') {
-        return res.status(403).json({ error: "Access denied. Admins only." });
-    }
-    try {
-        const result = await db.collection('vehicles').deleteOne(
-            { _id: new ObjectId(req.params.id) }
-        );
+// app.delete('/vehicles/:id', authenticate, authorize(['admin']), async (req, res) => {
+//     const { role } = req.body; // body kena ada "role": "admin"
+//     console.log("Admin Only");
 
-        if (result.deletedCount === 0) {
-            return res.status(404).json({ error: "Vehicle not found"});
-        }
-        res.status(200).json({ message: "successfully deleted by Admin"});
-    } catch (err) {
-        res.status(400).json({ error: "Invalid vehicle ID" });
-    }
-});
+//     if (role !== 'admin') {
+//         return res.status(403).json({ error: "Access denied. Admins only." });
+//     }
+//     try {
+//         const result = await db.collection('vehicles').deleteOne(
+//             { _id: new ObjectId(req.params.id) }
+//         );
+
+//         if (result.deletedCount === 0) {
+//             return res.status(404).json({ error: "Vehicle not found"});
+//         }
+//         res.status(200).json({ message: "successfully deleted by Admin"});
+//     } catch (err) {
+//         res.status(400).json({ error: "Invalid vehicle ID" });
+//     }
+// });
 
 
