@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Passenger Analytics Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --primary: #1f3b8c;
+      --secondary: #ffa726;
+      --bg: #f9fbfd;
+      --card-bg: #ffffff;
+      --text: #333;
+      --shadow: rgba(0, 0, 0, 0.1);
+    }
+
+    [data-theme="dark"] {
+      --bg: #121212;
+      --card-bg: #1e1e1e;
+      --text: #f1f1f1;
+      --primary: #90caf9;
+      --shadow: rgba(255, 255, 255, 0.05);
+    }
+
+    body {
+      margin: 0;
+      font-family: 'Poppins', sans-serif;
+      background-color: var(--bg);
+      color: var(--text);
+      padding: 20px;
+      transition: all 0.3s ease;
+    }
+
+    h1 {
+      text-align: center;
+      color: var(--primary);
+      font-size: 2.5rem;
+      margin-bottom: 10px;
+    }
+
+    .dashboard {
+      max-width: 1200px;
+      margin: auto;
+    }
+
+    .controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-bottom: 20px;
+      gap: 10px;
+    }
+
+    .controls input, .controls button {
+      padding: 10px 15px;
+      border-radius: 8px;
+      border: none;
+      font-family: inherit;
+      font-size: 1rem;
+    }
+
+    .controls input {
+      flex: 1;
+      min-width: 180px;
+      border: 1px solid #ccc;
+    }
+
+    .controls button {
+      cursor: pointer;
+      background-color: var(--primary);
+      color: white;
+    }
+
+    .cards {
+      display: flex;
+      gap: 20px;
+      flex-wrap: wrap;
+      justify-content: center;
+      margin: 30px 0;
+    }
+
+    .card {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      box-shadow: 0 4px 12px var(--shadow);
+      padding: 20px;
+      flex: 1 1 240px;
+      text-align: center;
+      transition: transform 0.3s ease;
+    }
+
+    .card:hover {
+      transform: translateY(-5px);
+    }
+
+    .card-icon {
+      font-size: 2rem;
+      color: var(--primary);
+      margin-bottom: 10px;
+    }
+
+    .card h3 {
+      font-size: 1.1rem;
+      margin: 0;
+      color: var(--text);
+    }
+
+    .card p {
+      font-size: 2rem;
+      font-weight: 600;
+      margin: 5px 0 0 0;
+      color: var(--primary);
+    }
+
+    .chart-container {
+      background-color: var(--card-bg);
+      border-radius: 16px;
+      padding: 30px;
+      margin-bottom: 40px;
+      box-shadow: 0 4px 12px var(--shadow);
+    }
+
+    canvas {
+      max-width: 100%;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+      font-size: 0.95rem;
+    }
+
+    th, td {
+      padding: 12px;
+      border: 1px solid #e1e1e1;
+      text-align: center;
+    }
+
+    th {
+      background-color: var(--primary);
+      color: white;
+    }
+
+    tr:nth-child(even) {
+      background-color: #f5f5f5;
+    }
+
+    [data-theme="dark"] tr:nth-child(even) {
+      background-color: #1a1a1a;
+    }
+
+    @media(max-width: 768px) {
+      .cards {
+        flex-direction: column;
+        align-items: center;
+      }
+
+      .controls {
+        flex-direction: column;
+        align-items: stretch;
+      }
+    }
+  </style>
+</head>
+<body data-theme="light">
+  <div class="dashboard">
+    <h1>🚖 Passenger Ride Analytics</h1>
+
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Search passenger by name...">
+      <button onclick="toggleTheme()">🌓 Toggle Theme</button>
+      <button onclick="exportTableToCSV()">⬇️ Export CSV</button>
+    </div>
+
+    <div class="cards" id="kpiCards">
+      <!-- KPI Cards will be added here -->
+    </div>
+
+    <div class="chart-container">
+      <h2>Total Fare by Passenger (RM)</h2>
+      <canvas id="fareChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>Average Distance by Passenger (KM)</h2>
+      <canvas id="distanceChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>Total Rides by Passenger</h2>
+      <canvas id="ridesChart"></canvas>
+    </div>
+
+    <div class="chart-container">
+      <h2>Passenger Ride Summary</h2>
+      <table id="summaryTable">
+        <thead>
+          <tr>
+            <th>Name</th>
+            <th>Total Rides</th>
+            <th>Total Fare (RM)</th>
+            <th>Avg. Distance (KM)</th>
+          </tr>
+        </thead>
+        <tbody></tbody>
+      </table>
+    </div>
+  </div>
+
+  <script>
+    let originalData = [];
+
+    function toggleTheme() {
+      const body = document.body;
+      body.dataset.theme = body.dataset.theme === "light" ? "dark" : "light";
+    }
+
+    function exportTableToCSV() {
+      const rows = Array.from(document.querySelectorAll("table tr"));
+      const csv = rows.map(row =>
+        Array.from(row.querySelectorAll("th, td"))
+          .map(cell => `"${cell.innerText}"`)
+          .join(",")
+      ).join("\n");
+
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const link = document.createElement('a');
+      link.href = URL.createObjectURL(blob);
+      link.download = 'passenger_analytics.csv';
+      link.click();
+    }
+
+    function renderDashboard(data) {
+      const names = data.map(d => d.name);
+      const fares = data.map(d => d.totalFare);
+      const distances = data.map(d => d.avgDistance);
+      const rides = data.map(d => d.totalRides);
+
+      const kpiContainer = document.getElementById('kpiCards');
+      const tbody = document.querySelector('#summaryTable tbody');
+      kpiContainer.innerHTML = '';
+      tbody.innerHTML = '';
+
+      data.forEach(d => {
+        // Cards
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `
+          <div class="card-icon">👤</div>
+          <h3>${d.name}</h3>
+          <p>${d.totalRides} Rides</p>
+        `;
+        kpiContainer.appendChild(card);
+
+        // Table
+        const row = `
+          <tr>
+            <td>${d.name}</td>
+            <td>${d.totalRides}</td>
+            <td>RM ${d.totalFare.toFixed(2)}</td>
+            <td>${d.avgDistance.toFixed(1)}</td>
+          </tr>
+        `;
+        tbody.innerHTML += row;
+      });
+
+      const chartOptions = {
+        responsive: true,
+        plugins: {
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              label: ctx => `${ctx.dataset.label}: ${ctx.raw}`
+            }
+          }
+        },
+        animation: { duration: 800, easing: 'easeOutQuart' }
+      };
+
+      new Chart(document.getElementById('fareChart'), {
+        type: 'bar',
+        data: { labels: names, datasets: [{ label: 'Fare', data: fares, backgroundColor: '#ffa726' }] },
+        options: chartOptions
+      });
+
+      new Chart(document.getElementById('distanceChart'), {
+        type: 'bar',
+        data: { labels: names, datasets: [{ label: 'Distance', data: distances, backgroundColor: '#66bb6a' }] },
+        options: chartOptions
+      });
+
+      new Chart(document.getElementById('ridesChart'), {
+        type: 'bar',
+        data: { labels: names, datasets: [{ label: 'Rides', data: rides, backgroundColor: '#42a5f5' }] },
+        options: chartOptions
+      });
+    }
+
+    function filterData(query) {
+      const filtered = originalData.filter(d => d.name.toLowerCase().includes(query.toLowerCase()));
+      renderDashboard(filtered);
+    }
+
+    document.getElementById('searchInput').addEventListener('input', e => {
+      filterData(e.target.value);
+    });
+
+    fetch('http://localhost:3000/analytics/passengers')
+      .then(res => res.json())
+      .then(data => {
+        originalData = data;
+        renderDashboard(data);
+      })
+      .catch(error => {
+        console.error(error);
+        document.querySelector('.dashboard').innerHTML += `<p style="color:red;text-align:center;">❌ Unable to fetch data. Please check your server.</p>`;
+      });
+  </script>
+</body>
+</html>
