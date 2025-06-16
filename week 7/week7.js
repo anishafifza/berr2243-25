@@ -4,30 +4,56 @@ const cors = require('cors');
 const app = express();
 const PORT = 3000;
 
+// MongoDB connection
 const uri = 'mongodb://localhost:27017';
 const client = new MongoClient(uri);
+
 app.use(cors());
+app.use(express.json()); // penting untuk baca JSON dari Postman
 
 let db;
 
+// 🧪 Seed data
 async function seedData() {
   db = client.db('testDB');
   const usersCollection = db.collection('users');
   const ridesCollection = db.collection('rides');
 
+  // Kosongkan collection dulu
   await usersCollection.deleteMany({});
   await ridesCollection.deleteMany({});
 
+  // Masukkan pengguna contoh
   const userResult = await usersCollection.insertMany([
-    { name: "Alice", email: "alice@example.com", role: "customer", phone: "0111111111" },
-    { name: "Bob", email: "bob@example.com", role: "customer", phone: "0222222222" },
-    { name: "Charlie", email: "charlie@example.com", role: "driver", phone: "0333333333", vehicle: "Perodua Bezza" }
+    {
+      name: "Alice",
+      email: "alice@example.com",
+      password: "alice123",
+      role: "customer",
+      phone: "0111111111"
+    },
+    {
+      name: "Bob",
+      email: "bob@example.com",
+      password: "bob123",
+      role: "customer",
+      phone: "0222222222"
+    },
+    {
+      name: "Charlie",
+      email: "charlie@example.com",
+      password: "charlie123",
+      role: "driver",
+      phone: "0333333333",
+      vehicle: "Perodua Bezza"
+    }
   ]);
 
   const aliceId = userResult.insertedIds['0'];
   const bobId = userResult.insertedIds['1'];
   const driverId = userResult.insertedIds['2'];
 
+  // Masukkan data perjalanan (rides)
   await ridesCollection.insertMany([
     {
       userId: aliceId,
@@ -61,7 +87,7 @@ async function seedData() {
   console.log("✅ Seed data inserted");
 }
 
-// API Endpoint
+// 📊 API Analytics Penumpang
 app.get('/analytics/passengers', async (req, res) => {
   try {
     const ridesCollection = db.collection('rides');
@@ -104,11 +130,40 @@ app.get('/analytics/passengers', async (req, res) => {
   }
 });
 
-// Start server
+// 🔐 API Login
+app.post('/login', async (req, res) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    return res.status(400).json({ message: "Email and password are required" });
+  }
+
+  try {
+    const user = await db.collection('users').findOne({ email, password });
+
+    if (!user) {
+      return res.status(401).json({ message: "Invalid email or password" });
+    }
+
+    res.json({
+      message: "Login successful",
+      user: {
+        name: user.name,
+        email: user.email,
+        role: user.role
+      }
+    });
+  } catch (err) {
+    console.error("❌ Login error:", err);
+    res.status(500).json({ message: "Server error" });
+  }
+});
+
+// 🚀 Mula server
 async function startServer() {
   try {
     await client.connect();
-    await seedData();
+    await seedData(); // optional kalau nak reset data setiap kali
     app.listen(PORT, () => console.log(`🚀 Server running at http://localhost:${PORT}`));
   } catch (err) {
     console.error("❌ Failed to start server:", err);
