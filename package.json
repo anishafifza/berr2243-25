@@ -4,7 +4,7 @@
   "description": "- readme file\r - added by vscode",
   "main": "index.js",
   "scripts": {
-    "start": "node MyTaxi/index.js"
+    "start": "node MyTaxi/Assignment.js"
   },
   "repository": {
     "type": "git",
